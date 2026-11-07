@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity() {
                 FileOutputStream(modelFile).use { it.write(bytes) }
 
                 runOnUiThread {
-                    updateStatus("Modelo listo (${formatBytes(bytes.size)}). Presiona INICIAR.")
+                    updateStatus("Modelo listo (${formatBytes(bytes.size.toLong())}). Presiona INICIAR.")
                     btnRunBenchmark.isEnabled = true
                 }
             } catch (e: Exception) {

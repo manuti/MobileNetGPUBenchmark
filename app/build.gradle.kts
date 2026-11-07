@@ -13,6 +13,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -40,6 +41,9 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+
+    // Multidex support for apps with multiple dex files
+    implementation("androidx.multidex:multidex:2.0.1")
 
     // TensorFlow Lite with GPU delegate
     implementation("org.tensorflow:tensorflow-lite:2.16.1")

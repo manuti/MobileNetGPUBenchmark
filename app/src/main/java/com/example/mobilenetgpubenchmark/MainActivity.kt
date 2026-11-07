@@ -1,7 +1,6 @@
 package com.example.mobilenetgpubenchmark
 
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -310,9 +309,8 @@ class FileLogger(private val context: android.content.Context) {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
 
     init {
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        logFile = File(downloadsDir, "benchmark_log.txt")
-        logFile.parentFile?.mkdirs()
+        // Use internal storage (no permissions needed)
+        logFile = File(context.filesDir, "benchmark_log.txt")
         log("=== FileLogger initialized ===")
     }
 

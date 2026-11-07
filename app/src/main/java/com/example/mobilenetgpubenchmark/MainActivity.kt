@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("Benchmark", "UNCAUGHT EXCEPTION in ${thread.name}", throwable)
             runOnUiThread {
-                tvStatus?.text = "CRASH: ${throwable.className}: ${throwable.message}"
+                tvStatus?.text = "CRASH: ${throwable.javaClass.simpleName}: ${throwable.message}"
                 tvResults?.text = Log.getStackTraceString(throwable)
             }
         }
@@ -86,7 +86,7 @@ class MainActivity : AppCompatActivity() {
                 Log.d("Benchmark", "Model saved to ${modelFile?.absolutePath}")
 
                 // Verify model file
-                if (!modelFile?.exists() == true) throw Exception("Model file not created")
+                if (modelFile?.exists() != true) throw Exception("Model file not created")
                 if (modelFile?.length() == 0L) throw Exception("Model file is empty")
 
                 runOnUiThread {

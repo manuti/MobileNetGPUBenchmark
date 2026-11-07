@@ -1,0 +1,42 @@
+# Gradle build files
+.gradle/
+build/
+*/build/
+*.iml
+
+# Local configuration
+local.properties
+*.properties.local
+
+# IDE files
+.idea/
+*.iws
+*.ipr
+out/
+.mgradle/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Termux/agent generated
+.agents/
+.claude/
+AGENTS.md
+
+# Kanvas (optional - keep if you want board in repo)
+# kanvas.json
+
+# Logs
+*.log
+
+# Android keystores (NEVER commit these)
+*.jks
+*.keystore
+*.store
+
+# Google services (if using)
+google-services.json
+
+# Caches
+.caches/

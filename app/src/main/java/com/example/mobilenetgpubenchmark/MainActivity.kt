@@ -1,6 +1,7 @@
 package com.example.mobilenetgpubenchmark
 
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -15,6 +16,11 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.io.FileWriter
+import java.io.BufferedWriter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
@@ -29,13 +35,20 @@ class MainActivity : AppCompatActivity() {
     private val MODEL_URL = "https://github.com/google-coral/test_data/raw/master/mobilenet_v1_1.0_224_quant.tflite"
     private val MODEL_FILENAME = "mobilenet_v1_1.0_224_quant.tflite"
     private var modelFile: File? = null
+    private lateinit var fileLogger: FileLogger
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Initialize file logger
+        fileLogger = FileLogger(this)
+        fileLogger.log("=== App started ===")
+        
         // Global exception handler to prevent silent crashes
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("Benchmark", "UNCAUGHT EXCEPTION in ${thread.name}", throwable)
+            fileLogger.log("UNCAUGHT EXCEPTION in ${thread.name}: ${throwable.message}")
+            fileLogger.log(Log.getStackTraceString(throwable))
             runOnUiThread {
                 tvStatus?.text = "CRASH: ${throwable.javaClass.simpleName}: ${throwable.message}"
                 tvResults?.text = Log.getStackTraceString(throwable)
@@ -58,6 +71,8 @@ class MainActivity : AppCompatActivity() {
             downloadModel()
         } catch (e: Exception) {
             Log.e("Benchmark", "onCreate error", e)
+            fileLogger.log("onCreate error: ${e.message}")
+            fileLogger.log(Log.getStackTraceString(e))
             tvStatus.text = "onCreate CRASH: ${e.message}"
             tvResults.text = Log.getStackTraceString(e)
         }
@@ -65,9 +80,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun downloadModel() {
         tvStatus.text = "Descargando modelo..."
+        fileLogger.log("Starting model download")
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 Log.d("Benchmark", "Starting download from $MODEL_URL")
+                fileLogger.log("Starting download from $MODEL_URL")
                 val client = OkHttpClient.Builder()
                     .followRedirects(true)
                     .followSslRedirects(true)
@@ -76,14 +93,17 @@ class MainActivity : AppCompatActivity() {
                 val response = client.newCall(request).execute()
 
                 Log.d("Benchmark", "Response code: ${response.code}")
+                fileLogger.log("Response code: ${response.code}")
                 if (!response.isSuccessful) throw Exception("HTTP ${response.code}: ${response.message}")
 
                 val bytes = response.body?.bytes() ?: throw Exception("Empty response body")
                 Log.d("Benchmark", "Downloaded ${bytes.size} bytes")
+                fileLogger.log("Downloaded ${bytes.size} bytes")
 
                 modelFile = File(filesDir, MODEL_FILENAME)
                 FileOutputStream(modelFile).use { it.write(bytes) }
                 Log.d("Benchmark", "Model saved to ${modelFile?.absolutePath}")
+                fileLogger.log("Model saved to ${modelFile?.absolutePath}")
 
                 // Verify model file
                 if (modelFile?.exists() != true) throw Exception("Model file not created")
@@ -95,6 +115,8 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("Benchmark", "Download error", e)
+                fileLogger.log("Download error: ${e.message}")
+                fileLogger.log(Log.getStackTraceString(e))
                 runOnUiThread {
                     updateStatus("Error descargando: ${e.message}")
                     tvResults.text = Log.getStackTraceString(e)
@@ -105,6 +127,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun runBenchmark() {
         tvStatus.text = "Ejecutando benchmark..."
+        fileLogger.log("Starting benchmark")
         btnRunBenchmark.isEnabled = false
         progressBar.visibility = View.VISIBLE
         tvResults.text = ""
@@ -117,27 +140,35 @@ class MainActivity : AppCompatActivity() {
             try {
                 // Test 1: CPU (XNNPACK)
                 results.add("=== CPU (XNNPACK) ===")
+                fileLogger.log("=== CPU (XNNPACK) ===")
                 cpuTime = runInference(useGpu = false)
                 if (cpuTime >= 0) {
                     results.add("Tiempo promedio: ${String.format("%.1f", cpuTime)} ms")
+                    fileLogger.log("CPU time: ${String.format("%.1f", cpuTime)} ms")
                 } else {
                     results.add("FALLÓ: Ver logs")
+                    fileLogger.log("CPU inference FAILED")
                 }
                 results.add("")
 
                 // Test 2: GPU Delegate
                 results.add("=== GPU Delegate (OpenGL ES) ===")
+                fileLogger.log("=== GPU Delegate (OpenGL ES) ===")
                 gpuTime = runInference(useGpu = true)
                 if (gpuTime >= 0) {
                     results.add("Tiempo promedio: ${String.format("%.1f", gpuTime)} ms")
                     val speedup = cpuTime / gpuTime
                     results.add("Speedup: ${String.format("%.2f", speedup)}x")
+                    fileLogger.log("GPU time: ${String.format("%.1f", gpuTime)} ms, Speedup: ${String.format("%.2f", cpuTime / gpuTime)}x")
                 } else {
                     results.add("GPU delegate NO disponible en este dispositivo")
+                    fileLogger.log("GPU delegate NOT available")
                 }
 
             } catch (e: Exception) {
                 Log.e("Benchmark", "Benchmark error", e)
+                fileLogger.log("Benchmark error: ${e.message}")
+                fileLogger.log(Log.getStackTraceString(e))
                 results.add("ERROR: ${e.message}")
                 results.add(Log.getStackTraceString(e))
             } finally {
@@ -146,6 +177,7 @@ class MainActivity : AppCompatActivity() {
                     btnRunBenchmark.isEnabled = true
                     tvResults.text = results.joinToString("\n")
                     tvStatus.text = "Benchmark completado"
+                    fileLogger.log("Benchmark completed")
                 }
             }
         }
@@ -155,6 +187,7 @@ class MainActivity : AppCompatActivity() {
         val modelPath = modelFile?.absolutePath
         if (modelPath == null) {
             Log.e("Benchmark", "No model file available")
+            fileLogger.log("No model file available")
             return -1.0
         }
 
@@ -163,24 +196,31 @@ class MainActivity : AppCompatActivity() {
 
         try {
             Log.d("Benchmark", "Creating interpreter for ${if (useGpu) "GPU" else "CPU"}")
+            fileLogger.log("Creating interpreter for ${if (useGpu) "GPU" else "CPU"}")
             val options = Interpreter.Options().setNumThreads(4)
 
             if (useGpu) {
                 try {
                     Log.d("Benchmark", "Creating GPU delegate...")
+                    fileLogger.log("Creating GPU delegate...")
                     gpuDelegate = GpuDelegate()
                     options.addDelegate(gpuDelegate)
                     Log.d("Benchmark", "GPU delegate created successfully")
+                    fileLogger.log("GPU delegate created successfully")
                 } catch (e: Exception) {
                     Log.w("Benchmark", "GPU delegate creation failed: ${e.message}", e)
+                    fileLogger.log("GPU delegate creation failed: ${e.message}")
+                    fileLogger.log(Log.getStackTraceString(e))
                     return -1.0
                 }
             }
 
             Log.d("Benchmark", "Creating interpreter with model: $modelPath")
+            fileLogger.log("Creating interpreter with model: $modelPath")
             interpreter = Interpreter(File(modelPath), options)
             interpreter.allocateTensors()
             Log.d("Benchmark", "Interpreter created and tensors allocated")
+            fileLogger.log("Interpreter created and tensors allocated")
 
             val inputTensor = interpreter.getInputTensor(0)
             val outputTensor = interpreter.getOutputTensor(0)
@@ -191,6 +231,8 @@ class MainActivity : AppCompatActivity() {
 
             Log.d("Benchmark", "Input: shape=$inputShape type=$inputType")
             Log.d("Benchmark", "Output: shape=$outputShape type=$outputType")
+            fileLogger.log("Input: shape=$inputShape type=$inputType")
+            fileLogger.log("Output: shape=$outputShape type=$outputType")
 
             // Create dummy input
             val inputBuffer = TensorBuffer.createFixedSize(inputShape, inputType)
@@ -209,6 +251,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> {
                     Log.e("Benchmark", "Unsupported input type: $inputType")
+                    fileLogger.log("Unsupported input type: $inputType")
                     return -1.0
                 }
             }
@@ -217,12 +260,14 @@ class MainActivity : AppCompatActivity() {
 
             // Warmup
             Log.d("Benchmark", "Warmup...")
+            fileLogger.log("Warmup...")
             repeat(3) { interpreter.run(inputBuffer.buffer, outputBuffer.buffer) }
 
             // Benchmark
             val iterations = 10
             val times = LongArray(iterations)
             Log.d("Benchmark", "Running $iterations iterations...")
+            fileLogger.log("Running $iterations iterations...")
             for (i in 0 until iterations) {
                 val start = System.nanoTime()
                 interpreter.run(inputBuffer.buffer, outputBuffer.buffer)
@@ -231,20 +276,24 @@ class MainActivity : AppCompatActivity() {
 
             val avgMs: Double = times.drop(2).average().toDouble() / 1_000_000.0
             Log.d("Benchmark", "Average time: $avgMs ms")
+            fileLogger.log("Average time: $avgMs ms")
             return avgMs
 
         } catch (e: Exception) {
             Log.e("Benchmark", "Inference error for ${if (useGpu) "GPU" else "CPU"}", e)
+            fileLogger.log("Inference error for ${if (useGpu) "GPU" else "CPU"}: ${e.message}")
+            fileLogger.log(Log.getStackTraceString(e))
             return -1.0
         } finally {
-            try { interpreter?.close() } catch (e: Exception) { Log.e("Benchmark", "Error closing interpreter", e) }
-            try { gpuDelegate?.close() } catch (e: Exception) { Log.e("Benchmark", "Error closing GPU delegate", e) }
+            try { interpreter?.close() } catch (e: Exception) { Log.e("Benchmark", "Error closing interpreter", e); fileLogger.log("Error closing interpreter: ${e.message}") }
+            try { gpuDelegate?.close() } catch (e: Exception) { Log.e("Benchmark", "Error closing GPU delegate", e); fileLogger.log("Error closing GPU delegate: ${e.message}") }
         }
     }
 
     private fun updateStatus(msg: String) {
         tvStatus.text = msg
         Log.d("Benchmark", msg)
+        fileLogger.log(msg)
     }
 
     private fun formatBytes(bytes: Long): String {
@@ -253,5 +302,32 @@ class MainActivity : AppCompatActivity() {
             bytes < 1024 * 1024 -> "${bytes / 1024} KB"
             else -> "${bytes / (1024 * 1024)} MB"
         }
+    }
+}
+
+class FileLogger(private val context: android.content.Context) {
+    private val logFile: File
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
+
+    init {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        logFile = File(downloadsDir, "benchmark_log.txt")
+        logFile.parentFile?.mkdirs()
+        log("=== FileLogger initialized ===")
+    }
+
+    fun log(message: String) {
+        val timestamp = dateFormat.format(Date())
+        val logLine = "[$timestamp] $message"
+        try {
+            BufferedWriter(FileWriter(logFile, true)).use { writer ->
+                writer.write(logLine)
+                writer.newLine()
+            }
+        } catch (e: Exception) {
+            Log.e("FileLogger", "Failed to write log", e)
+        }
+        // Also log to Android logcat
+        Log.d("Benchmark", message)
     }
 }

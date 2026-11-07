@@ -198,9 +198,9 @@ class MainActivity : AppCompatActivity() {
             
             when (inputType) {
                 org.tensorflow.lite.DataType.UINT8 -> {
-                    val byteValues = ByteArray(flatSize)
-                    for (i in byteValues.indices) byteValues[i] = (Math.random() * 255).toByte()
-                    inputBuffer.loadArray(byteValues)
+                    val intValues = IntArray(flatSize)
+                    for (i in intValues.indices) intValues[i] = (Math.random() * 255).toInt()
+                    inputBuffer.loadArray(intValues)
                 }
                 org.tensorflow.lite.DataType.FLOAT32 -> {
                     val floatValues = FloatArray(flatSize)

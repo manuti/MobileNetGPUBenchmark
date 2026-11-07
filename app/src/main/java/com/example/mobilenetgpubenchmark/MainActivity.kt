@@ -158,7 +158,7 @@ class MainActivity : AppCompatActivity() {
                 times[i] = System.nanoTime() - start
             }
 
-            val avgMs = times.drop(2).average() / 1_000_000.0 // drop first 2, convert to ms
+            val avgMs: Double = times.drop(2).average().toDouble() / 1_000_000.0
             return avgMs
 
         } catch (e: Exception) {

@@ -1,0 +1,78 @@
+{
+  "kanvas": 1,
+  "title": "MobileNetGPUBenchmark",
+  "groups": [
+    {
+      "id": "PR",
+      "name": "Permisos"
+    },
+    {
+      "id": "LG",
+      "name": "Logging"
+    },
+    {
+      "id": "BN",
+      "name": "Benchmark"
+    },
+    {
+      "id": "UI",
+      "name": "UI"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "PR-01",
+      "title": "Add runtime storage permission request (READ_EXTERNAL_STORAGE / READ_MEDIA_IMAGES)",
+      "state": "proposed",
+      "group": "PR",
+      "at": "2026-11-07T22:39:07Z",
+      "by": "agent",
+      "desc": "Request storage permission before benchmark runs. Handle Android 13+ (READ_MEDIA_IMAGES) and older versions (READ_EXTERNAL_STORAGE). Show rationale dialog if denied."
+    },
+    {
+      "id": "LG-01",
+      "title": "Save logs and results to external storage (Downloads folder)",
+      "state": "proposed",
+      "group": "LG",
+      "at": "2026-11-07T22:39:07Z",
+      "by": "agent",
+      "desc": "Modify FileLogger to write to external storage (public Downloads) after permission granted. Keep internal storage fallback. Add method to export/view log file."
+    },
+    {
+      "id": "BN-01",
+      "title": "Fix model download reliability (add fallback, timeout, retry)",
+      "state": "proposed",
+      "group": "BN",
+      "at": "2026-11-07T22:39:07Z",
+      "by": "agent",
+      "desc": "GitHub raw URLs can be blocked. Add timeout, retry logic, and bundled model fallback or alternative URL."
+    },
+    {
+      "id": "BN-02",
+      "title": "Improve GPU delegate error handling and device compatibility",
+      "state": "proposed",
+      "group": "BN",
+      "at": "2026-11-07T22:39:07Z",
+      "by": "agent",
+      "desc": "Better detect GPU delegate support. Gracefully handle devices without GPU delegate. Log detailed compatibility info."
+    },
+    {
+      "id": "UI-01",
+      "title": "Add 'View Logs' button and log export to UI",
+      "state": "proposed",
+      "group": "UI",
+      "at": "2026-11-07T22:39:07Z",
+      "by": "agent",
+      "desc": "Add button to open log file in external viewer. Add 'Copy logs' and 'Share logs' options for debugging."
+    },
+    {
+      "id": "LG-02",
+      "title": "Add global crash handler with persistent crash logs",
+      "state": "proposed",
+      "group": "LG",
+      "at": "2026-11-07T22:39:07Z",
+      "by": "agent",
+      "desc": "Ensure uncaught exceptions are written to external storage log before app dies. Add crash log viewing in UI."
+    }
+  ]
+}
